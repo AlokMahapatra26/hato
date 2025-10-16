@@ -1,10 +1,9 @@
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import Feed from '@/components/Feed';
-import QuickSearch from '@/components/QuickSearch';
-import { authOptions } from './api/auth/[...nextauth]/route';
+import SearchUsers from '@/components/SearchUsers';
+import { authOptions } from '../api/auth/[...nextauth]/route';
 
-export default async function Home() {
+export default async function SearchPage() {
   const session = await getServerSession(authOptions);
 
   if (!session) {
@@ -14,10 +13,9 @@ export default async function Home() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6 border-b border-border pb-4">
-        Hato
+        Search Users
       </h1>
-      {/* <QuickSearch /> */}
-      <Feed />
+      <SearchUsers />
     </div>
   );
 }
