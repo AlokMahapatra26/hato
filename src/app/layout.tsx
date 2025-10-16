@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { Space_Grotesk, DM_Sans } from 'next/font/google';
 import './globals.css';
 import Navigation from '@/components/Navigation';
 import MobileNav from '@/components/MobileNav';
@@ -7,7 +7,17 @@ import { getServerSession } from 'next-auth';
 import SessionProvider from '@/components/SessionProvider';
 import { authOptions } from './api/auth/[...nextauth]/route';
 
-const inter = Inter({ subsets: ['latin'] });
+const spaceGrotesk = Space_Grotesk({ 
+  subsets: ['latin'],
+  variable: '--font-heading',
+  display: 'swap',
+});
+
+const dmSans = DM_Sans({ 
+  subsets: ['latin'],
+  variable: '--font-body',
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'Twitter Clone',
@@ -22,8 +32,8 @@ export default async function RootLayout({
   const session = await getServerSession(authOptions);
 
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" className={`${spaceGrotesk.variable} ${dmSans.variable}`}>
+      <body className={dmSans.className}>
         <SessionProvider session={session}>
           <div className="min-h-screen">
             <Navigation />

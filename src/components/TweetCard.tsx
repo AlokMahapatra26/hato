@@ -8,6 +8,8 @@ import { Button } from './ui/button';
 import { Avatar, AvatarFallback } from './ui/avatar';
 import Link from 'next/link';
 import CommentSection from './CommentSection';
+import { useTweetStore } from '@/store/useTweetStore';
+import { useCommentStore } from '@/store/useCommentStore';
 
 interface TweetCardProps {
   tweet: any;
@@ -18,38 +20,33 @@ export default function TweetCard({ tweet, onUpdate }: TweetCardProps) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [showComments, setShowComments] = useState(false);
-  const [commentCount, setCommentCount] = useState(0);
+  const { updateTweet, removeTweet } = useTweetStore();
+  const { fetchComments, getCommentCount } = useCommentStore();
 
   const isLiked = tweet.likes?.includes(session?.user?.id);
   const isAuthor = tweet.author._id === session?.user?.id;
+  const commentCount = getCommentCount(tweet._id);
 
   useEffect(() => {
-    fetchCommentCount();
+    // Pre-fetch comment count for display
+    fetchComments(tweet._id);
   }, [tweet._id]);
-
-  const fetchCommentCount = async () => {
-    try {
-      const res = await fetch(`/api/comments?tweetId=${tweet._id}`);
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setCommentCount(data.length);
-      }
-    } catch (error) {
-      console.error('Error fetching comment count:', error);
-    }
-  };
 
   const handleLike = async () => {
     if (loading) return;
     setLoading(true);
 
     try {
-      await fetch(`/api/tweets/${tweet._id}`, {
+      const res = await fetch(`/api/tweets/${tweet._id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: isLiked ? 'unlike' : 'like' }),
       });
-      onUpdate();
+
+      if (res.ok) {
+        const updatedTweet = await res.json();
+        updateTweet(tweet._id, updatedTweet);
+      }
     } catch (error) {
       console.error('Error liking tweet:', error);
     } finally {
@@ -65,7 +62,7 @@ export default function TweetCard({ tweet, onUpdate }: TweetCardProps) {
       await fetch(`/api/tweets/${tweet._id}`, {
         method: 'DELETE',
       });
-      onUpdate();
+      removeTweet(tweet._id);
     } catch (error) {
       console.error('Error deleting tweet:', error);
     } finally {
@@ -76,8 +73,7 @@ export default function TweetCard({ tweet, onUpdate }: TweetCardProps) {
   const handleCommentToggle = () => {
     setShowComments(!showComments);
     if (!showComments) {
-      // Refresh comment count when opening
-      fetchCommentCount();
+      fetchComments(tweet._id, true); // Force refresh when opening
     }
   };
 
@@ -143,10 +139,7 @@ export default function TweetCard({ tweet, onUpdate }: TweetCardProps) {
           <CommentSection 
             tweetId={tweet._id}
             isOpen={showComments}
-            onClose={() => {
-              setShowComments(false);
-              fetchCommentCount();
-            }}
+            onClose={() => setShowComments(false)}
           />
         </div>
       </div>

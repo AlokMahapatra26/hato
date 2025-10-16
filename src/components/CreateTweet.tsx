@@ -6,7 +6,7 @@ import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
 import { Card } from './ui/card';
 
-export default function CreateTweet({ onTweetCreated }: { onTweetCreated: () => void }) {
+export default function CreateTweet({ onTweetCreated }: { onTweetCreated: (tweet: any) => void }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
   const { data: session } = useSession();
@@ -24,8 +24,9 @@ export default function CreateTweet({ onTweetCreated }: { onTweetCreated: () => 
       });
 
       if (res.ok) {
+        const newTweet = await res.json();
         setContent('');
-        onTweetCreated();
+        onTweetCreated(newTweet); // Pass the new tweet to parent
       }
     } catch (error) {
       console.error('Error creating tweet:', error);

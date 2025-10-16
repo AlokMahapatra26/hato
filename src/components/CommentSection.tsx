@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { Button } from './ui/button';
 import { Textarea } from './ui/textarea';
-import { Card } from './ui/card';
 import CommentItem from './CommentItem';
 import { MessageCircle } from 'lucide-react';
+import { useCommentStore } from '@/store/useCommentStore';
 
 interface CommentSectionProps {
   tweetId: string;
@@ -15,33 +15,26 @@ interface CommentSectionProps {
 }
 
 export default function CommentSection({ tweetId, isOpen, onClose }: CommentSectionProps) {
-  const [comments, setComments] = useState<any[]>([]);
   const [content, setContent] = useState('');
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { data: session } = useSession();
+  
+  const {
+    commentsByTweet,
+    loading,
+    fetchComments,
+    addComment,
+    removeComment,
+  } = useCommentStore();
+
+  const comments = commentsByTweet[tweetId]?.comments || [];
+  const isLoading = loading[tweetId] || false;
 
   useEffect(() => {
     if (isOpen) {
-      fetchComments();
+      fetchComments(tweetId);
     }
   }, [isOpen, tweetId]);
-
-  const fetchComments = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/comments?tweetId=${tweetId}`);
-      const data = await res.json();
-      
-      if (Array.isArray(data)) {
-        setComments(data);
-      }
-    } catch (error) {
-      console.error('Error fetching comments:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,13 +49,25 @@ export default function CommentSection({ tweetId, isOpen, onClose }: CommentSect
       });
 
       if (res.ok) {
+        const newComment = await res.json();
+        addComment(tweetId, newComment);
         setContent('');
-        fetchComments();
       }
     } catch (error) {
       console.error('Error creating comment:', error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      await fetch(`/api/comments/${commentId}`, {
+        method: 'DELETE',
+      });
+      removeComment(tweetId, commentId);
+    } catch (error) {
+      console.error('Error deleting comment:', error);
     }
   };
 
@@ -113,7 +118,7 @@ export default function CommentSection({ tweetId, isOpen, onClose }: CommentSect
       )}
 
       <div className="space-y-3">
-        {loading ? (
+        {isLoading ? (
           <div className="text-center py-4 text-muted-foreground text-sm">
             Loading comments...
           </div>
@@ -126,7 +131,7 @@ export default function CommentSection({ tweetId, isOpen, onClose }: CommentSect
             <CommentItem 
               key={comment._id} 
               comment={comment} 
-              onDelete={fetchComments}
+              onDelete={() => handleDelete(comment._id)}
             />
           ))
         )}

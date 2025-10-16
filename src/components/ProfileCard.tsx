@@ -8,46 +8,34 @@ import { Avatar, AvatarFallback } from './ui/avatar';
 import { Pencil, Trash2 } from 'lucide-react';
 import EditProfileDialog from './EditProfileDialog';
 import DeleteAccountDialog from './DeleteAccountDialog';
+import { useUserStore } from '@/store/useUserStore';
 
 interface ProfileCardProps {
   userId: string;
 }
 
 export default function ProfileCard({ userId }: ProfileCardProps) {
-  const [user, setUser] = useState<any>(null);
   const [isFollowing, setIsFollowing] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const { data: session, status } = useSession();
-
+  
+  const { users, loading, fetchUser, updateUser } = useUserStore();
+  
+  const user = users[userId]?.data;
+  const isLoading = loading[userId] || false;
   const isOwnProfile = session?.user?.id === userId;
 
   useEffect(() => {
-    fetchUser();
-    if (!isOwnProfile && session?.user?.id) {
+    fetchUser(userId);
+  }, [userId]);
+
+  useEffect(() => {
+    if (!isOwnProfile && session?.user?.id && user) {
       checkFollowStatus();
     }
-  }, [userId, session?.user?.id]);
-
-  const fetchUser = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch(`/api/users/${userId}`);
-      const data = await res.json();
-      
-      if (res.ok) {
-        setUser(data);
-      } else {
-        console.error('Error fetching user:', data);
-      }
-    } catch (error) {
-      console.error('Error fetching user:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [userId, session?.user?.id, user]);
 
   const checkFollowStatus = async () => {
     try {
@@ -62,12 +50,7 @@ export default function ProfileCard({ userId }: ProfileCardProps) {
   };
 
   const handleFollow = async () => {
-    if (actionLoading) return;
-    
-    if (!session?.user?.id) {
-      alert('Please log in to follow users');
-      return;
-    }
+    if (actionLoading || !session?.user?.id) return;
     
     setActionLoading(true);
     try {
@@ -82,7 +65,8 @@ export default function ProfileCard({ userId }: ProfileCardProps) {
       
       if (res.ok) {
         setIsFollowing(!isFollowing);
-        fetchUser();
+        // Refresh user data to update counts
+        fetchUser(userId, true);
       }
     } catch (error) {
       console.error('Error updating follow:', error);
@@ -91,7 +75,11 @@ export default function ProfileCard({ userId }: ProfileCardProps) {
     }
   };
 
-  if (loading) {
+  const handleProfileUpdate = () => {
+    fetchUser(userId, true); // Force refresh
+  };
+
+  if (isLoading && !user) {
     return (
       <Card className="p-6 mb-4">
         <div className="text-center py-4 text-muted-foreground">Loading profile...</div>
@@ -173,7 +161,7 @@ export default function ProfileCard({ userId }: ProfileCardProps) {
             user={user}
             open={editDialogOpen}
             onOpenChange={setEditDialogOpen}
-            onSuccess={fetchUser}
+            onSuccess={handleProfileUpdate}
           />
           <DeleteAccountDialog
             userId={user._id}
